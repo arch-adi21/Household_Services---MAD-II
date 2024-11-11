@@ -1,4 +1,6 @@
 from flask_sqlalchemy import SQLAlchemy
+from sqlalchemy import Date
+from datetime import date
 
 db = SQLAlchemy()
 
@@ -10,6 +12,8 @@ class User(db.Model):
     password = db.Column(db.String(256), nullable=False)
     active = db.Column(db.Boolean, default=True)
     premium = db.Column(db.Boolean, default=False)
+    registration_date = db.Column(Date, default=date.today, nullable=False)
+    last_login = db.Column(db.DateTime, nullable=True)
     fs_uniquefier = db.Column(db.String(256), unique=True, nullable=False)
     role_id = db.Column(db.Integer, db.ForeignKey('role.id'), nullable=False)
     role = db.relationship('Role', backref=db.backref('users', lazy=True))

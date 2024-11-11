@@ -1,9 +1,14 @@
 from flask_restful import Resource, Api, reqparse 
-from flask import jsonify
-from application.model import db, Services, User
+from flask import jsonify , request , make_response
+from application.model import db, Services, User, Role
 from sqlalchemy.exc import IntegrityError
-from flask_jwt_extended import get_jwt_identity,jwt_required
+from werkzeug.security import generate_password_hash , check_password_hash
+from flask_jwt_extended import get_jwt_identity,jwt_required , create_access_token
+from application.logger.logger import logger
 from functools import wraps
+from application.rbac import role_required
+import uuid
+from datetime import datetime , timedelta
 
 api = Api(prefix='/api')
 
@@ -12,15 +17,145 @@ api = Api(prefix='/api')
 #### Method for JWT management for RBAC authentication #####
 ####################################################################
 
-def admin_required(fn):
-    @wraps(fn)
-    @jwt_required()
-    def wrapper(*args, **kwargs):
-        user_identity = get_jwt_identity()
-        if user_identity['role'] != 'admin':
-            return jsonify({"message": "Access denied: Admins only"}), 403
-        return fn(*args, **kwargs)
-    return wrapper
+class RBACTester(Resource):
+    @role_required('Customer')
+    def get(self):
+        return {'message': 'Access granted! This is a protected endpoint for customers only.'}, 200
+    
+    @role_required('Service Provider')
+    def post(self):
+        return {'message': 'Access granted! This is a protected endpoint for service providers only.'}, 200
+    
+api.add_resource(RBACTester, '/rbac-tester')
+
+
+
+
+
+####################################################################
+####            Resource class to register the user            #####
+####################################################################
+
+class RegisterController(Resource):
+    def post(self):
+        try :
+            # Define required arguments
+            parser = reqparse.RequestParser()
+            parser.add_argument('username', type=str, required=True, help="Username cannot be blank!")
+            parser.add_argument('email', type=str, required=True, help="Email cannot be blank!")
+            parser.add_argument('password', type=str, required=True, help="Password cannot be blank!")
+            parser.add_argument('role_id', type=int, required=True, help="Role ID cannot be blank!")
+            args = parser.parse_args()
+
+            # Validate input data
+            if not args['username'] or not args['email'] or not args['password'] or not args['role_id']:
+                return make_response(jsonify({'message': 'All fields are required'}), 400)
+
+            # Check if the role exists in the database
+            role = Role.query.filter_by(id=args['role_id']).first()
+            if not role:
+                return make_response(jsonify({'message': 'Invalid role'}), 400)
+
+            # Check if the email already exists
+            if User.query.filter_by(email=args['email']).first():
+                return make_response(jsonify({'message': 'Email is already in use'}), 400)
+
+            # Generate fs_uniquefier using UUID
+            fs_uniquefier = str(uuid.uuid4())
+
+            # Hash the password before storing it
+            hashed_password = generate_password_hash(args['password'])
+
+            # Create the new user instance
+            new_user = User(
+                username=args['username'],
+                email=args['email'],
+                password=hashed_password,
+                role_id=args['role_id'],
+                fs_uniquefier=fs_uniquefier,
+                registration_date=datetime.today() # Set the registration date to the current time
+            )
+
+            # Add user to the database
+            db.session.add(new_user)
+            db.session.commit()
+
+            # Return the created user as a response (Serialized into dictionary)
+            user_data = {
+                    'id': new_user.id,
+                    'username': new_user.username,
+                    'role': new_user.role.name,
+                    'registration_date': new_user.registration_date.isoformat()  # Format the date properly
+                }
+            
+            logger.debug(f'User created: {user_data}')  # Log the serializable dict instead of the model instance
+
+            return make_response(jsonify({'message': 'User created successfully', 'user': user_data}), 201)
+
+        except Exception as e:
+            logger.error(f'Error creating user: {str(e)}')
+            db.session.rollback()
+            return make_response(jsonify({'message': 'An error occurred while creating the user'}), 500)
+    
+api.add_resource(RegisterController, '/register')
+
+
+
+
+
+####################################################################
+####     Resource class to login with JWT token management     #####
+####################################################################
+
+class LoginController(Resource):
+    def post(self):
+        try:
+            parser = reqparse.RequestParser()
+            parser.add_argument('email', type=str, required=False, help="Provide email or username")
+            parser.add_argument('username', type=str, required=False, help="Provide username or email")
+            parser.add_argument('password', type=str, required=True, help="Password cannot be blank!")
+            args = parser.parse_args()
+
+            # Ensure either email or username is provided
+            if not args['email'] and not args['username']:
+                return make_response(jsonify({'message': 'Either email or username must be provided'}), 400)
+
+            # Validate the input
+            if not args['password']:
+                return make_response(jsonify({'message': 'Password is required'}), 400)
+
+            # Look up the user by email or username
+            user = None
+            if args['email']:
+                user = User.query.filter_by(email=args['email']).first()
+            elif args['username']:
+                user = User.query.filter_by(username=args['username']).first()
+
+            if not user or not check_password_hash(user.password, args['password']):
+                return make_response(jsonify({'message': 'Invalid email or password'}), 401)
+
+            # Create access token with user role
+            if user.role != 'admin' :
+                access_token = create_access_token(identity=user.id,expires_delta=timedelta(hours=1) ,additional_claims={'username':user.username ,'role': user.role.name})
+            elif user.role == 'admin':
+                access_token = create_access_token(identity=user.id,expires_delta=timedelta(minutes=30) ,additional_claims={'username':user.username ,'role': user.role.name})
+            else :
+                return make_response(jsonify({'message': 'Invalid role to create a JWT token'}), 400)
+
+            # Update last login date
+            user.last_login = datetime.now()
+            db.session.commit()
+
+            return make_response(jsonify({'message': 'Login successful', 'token': access_token}), 200)
+        
+        except Exception as e:
+            logger.error(f'Error logging in: {str(e)}')
+            return make_response(jsonify({'message': 'An error occurred while logging in'}), 500)
+
+api.add_resource(LoginController, '/login')
+
+
+
 
 
 ####################################################################
@@ -145,13 +280,4 @@ class ServicesController(Resource):
 
 api.add_resource(ServicesController, '/services')
 
-####################################################################
-#### Resource class to update users only with admin credentials ####
-####################################################################
 
-class UsersResource(Resource):
-    @admin_required
-    def get(self):
-        users = User.query.all()
-        users_data = [{'id': user.id, 'username': user.username, 'email': user.email, 'role_id': user.role_id} for user in users]
-        return users_data, 200

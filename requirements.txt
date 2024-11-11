@@ -1,0 +1,7 @@
+## Developer requirements ##
+Flask==3.0.3
+Flask-JWT-Extended==4.6.0
+Flask-RESTful==0.3.10
+Flask-SQLAlchemy==3.1.1
+flask-cors==5.0.0
+python-dotenv==1.0.1 #d

@@ -1,5 +1,5 @@
-from flask import current_app as app
+from flask import current_app as app, render_template
 
 @app.get('/')
 def home():
-    return 'Hello, World!'
+    return render_template('index.html')

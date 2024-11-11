@@ -1,0 +1,33 @@
+C:\Users\adity\Documents\mad2\mad2\lib\site-packages\werkzeug\_internal.py - 97 - 2024-11-11 11:12:50,823 - WARNING -  * Debugger is active!
+C:\Users\adity\Documents\mad2\mad2\lib\site-packages\werkzeug\_internal.py - 97 - 2024-11-11 11:12:50,826 - INFO -  * Debugger PIN: 996-105-076
+C:\Users\adity\Documents\mad2\mad2\lib\site-packages\werkzeug\_internal.py - 97 - 2024-11-11 11:12:54,491 - INFO - 127.0.0.1 - - [11/Nov/2024 11:12:54] "GET / HTTP/1.1" 200 -
+C:\Users\adity\Documents\mad2\mad2\lib\site-packages\werkzeug\_internal.py - 97 - 2024-11-11 11:12:54,785 - INFO - 127.0.0.1 - - [11/Nov/2024 11:12:54] "[36mGET /static/index.js HTTP/1.1[0m" 304 -
+C:\Users\adity\Documents\mad2\mad2\lib\site-packages\werkzeug\_internal.py - 97 - 2024-11-11 11:12:54,798 - INFO - 127.0.0.1 - - [11/Nov/2024 11:12:54] "[36mGET /static/router.js HTTP/1.1[0m" 304 -
+C:\Users\adity\Documents\mad2\mad2\lib\site-packages\werkzeug\_internal.py - 97 - 2024-11-11 11:12:54,800 - INFO - 127.0.0.1 - - [11/Nov/2024 11:12:54] "[36mGET /static/components/Navbar.js HTTP/1.1[0m" 304 -
+C:\Users\adity\Documents\mad2\mad2\lib\site-packages\werkzeug\_internal.py - 97 - 2024-11-11 11:12:54,853 - INFO - 127.0.0.1 - - [11/Nov/2024 11:12:54] "[36mGET /static/components/Home.js HTTP/1.1[0m" 304 -
+C:\Users\adity\Documents\mad2\mad2\lib\site-packages\werkzeug\_internal.py - 97 - 2024-11-11 11:12:54,860 - INFO - 127.0.0.1 - - [11/Nov/2024 11:12:54] "[36mGET /static/components/Register.js HTTP/1.1[0m" 304 -
+C:\Users\adity\Documents\mad2\mad2\lib\site-packages\werkzeug\_internal.py - 97 - 2024-11-11 11:12:54,879 - INFO - 127.0.0.1 - - [11/Nov/2024 11:12:54] "[36mGET /static/components/Login.js HTTP/1.1[0m" 304 -
+C:\Users\adity\Documents\mad2\mad2\lib\site-packages\werkzeug\_internal.py - 97 - 2024-11-11 11:12:54,965 - INFO - 127.0.0.1 - - [11/Nov/2024 11:12:54] "[36mGET /static/images/home.gif HTTP/1.1[0m" 304 -
+C:\Users\adity\Documents\mad2\mad2\lib\site-packages\werkzeug\_internal.py - 97 - 2024-11-11 11:13:00,106 - INFO - 127.0.0.1 - - [11/Nov/2024 11:13:00] "GET / HTTP/1.1" 200 -
+C:\Users\adity\Documents\mad2\mad2\lib\site-packages\werkzeug\_internal.py - 97 - 2024-11-11 11:13:00,224 - INFO - 127.0.0.1 - - [11/Nov/2024 11:13:00] "[36mGET /static/index.js HTTP/1.1[0m" 304 -
+C:\Users\adity\Documents\mad2\mad2\lib\site-packages\werkzeug\_internal.py - 97 - 2024-11-11 11:13:00,246 - INFO - 127.0.0.1 - - [11/Nov/2024 11:13:00] "[36mGET /static/router.js HTTP/1.1[0m" 304 -
+C:\Users\adity\Documents\mad2\mad2\lib\site-packages\werkzeug\_internal.py - 97 - 2024-11-11 11:13:00,250 - INFO - 127.0.0.1 - - [11/Nov/2024 11:13:00] "[36mGET /static/components/Navbar.js HTTP/1.1[0m" 304 -
+C:\Users\adity\Documents\mad2\mad2\lib\site-packages\werkzeug\_internal.py - 97 - 2024-11-11 11:13:00,306 - INFO - 127.0.0.1 - - [11/Nov/2024 11:13:00] "[36mGET /static/components/Home.js HTTP/1.1[0m" 304 -
+C:\Users\adity\Documents\mad2\mad2\lib\site-packages\werkzeug\_internal.py - 97 - 2024-11-11 11:13:00,315 - INFO - 127.0.0.1 - - [11/Nov/2024 11:13:00] "[36mGET /static/components/Register.js HTTP/1.1[0m" 304 -
+C:\Users\adity\Documents\mad2\mad2\lib\site-packages\werkzeug\_internal.py - 97 - 2024-11-11 11:13:00,320 - INFO - 127.0.0.1 - - [11/Nov/2024 11:13:00] "[36mGET /static/components/Login.js HTTP/1.1[0m" 304 -
+C:\Users\adity\Documents\mad2\mad2\lib\site-packages\werkzeug\_internal.py - 97 - 2024-11-11 11:13:00,420 - INFO - 127.0.0.1 - - [11/Nov/2024 11:13:00] "[36mGET /static/images/home.gif HTTP/1.1[0m" 304 -
+C:\Users\adity\Documents\mad2\mad2\lib\site-packages\werkzeug\_internal.py - 97 - 2024-11-11 11:16:00,828 - INFO - 127.0.0.1 - - [11/Nov/2024 11:16:00] "OPTIONS /api/register HTTP/1.1" 200 -
+C:\Users\adity\Documents\mad2\application\resources.py - 91 - 2024-11-11 11:16:01,319 - DEBUG - User created: {'id': 5, 'username': 'Gurdeep_gandu', 'role': 'Customer', 'registration_date': '2024-11-11'}
+C:\Users\adity\Documents\mad2\mad2\lib\site-packages\werkzeug\_internal.py - 97 - 2024-11-11 11:16:01,321 - INFO - 127.0.0.1 - - [11/Nov/2024 11:16:01] "[35m[1mPOST /api/register HTTP/1.1[0m" 201 -
+C:\Users\adity\Documents\mad2\mad2\lib\site-packages\werkzeug\_internal.py - 97 - 2024-11-11 11:16:17,714 - INFO - 127.0.0.1 - - [11/Nov/2024 11:16:17] "OPTIONS /api/login HTTP/1.1" 200 -
+C:\Users\adity\Documents\mad2\mad2\lib\site-packages\werkzeug\_internal.py - 97 - 2024-11-11 11:16:18,128 - INFO - 127.0.0.1 - - [11/Nov/2024 11:16:18] "POST /api/login HTTP/1.1" 200 -
+C:\Users\adity\Documents\mad2\mad2\lib\site-packages\werkzeug\_internal.py - 97 - 2024-11-11 11:18:40,203 - INFO - 127.0.0.1 - - [11/Nov/2024 11:18:40] "GET / HTTP/1.1" 200 -
+C:\Users\adity\Documents\mad2\mad2\lib\site-packages\werkzeug\_internal.py - 97 - 2024-11-11 11:18:40,388 - INFO - 127.0.0.1 - - [11/Nov/2024 11:18:40] "[36mGET /static/index.js HTTP/1.1[0m" 304 -
+C:\Users\adity\Documents\mad2\mad2\lib\site-packages\werkzeug\_internal.py - 97 - 2024-11-11 11:18:40,584 - INFO - 127.0.0.1 - - [11/Nov/2024 11:18:40] "[36mGET /static/router.js HTTP/1.1[0m" 304 -
+C:\Users\adity\Documents\mad2\mad2\lib\site-packages\werkzeug\_internal.py - 97 - 2024-11-11 11:18:40,587 - INFO - 127.0.0.1 - - [11/Nov/2024 11:18:40] "[36mGET /static/components/Navbar.js HTTP/1.1[0m" 304 -
+C:\Users\adity\Documents\mad2\mad2\lib\site-packages\werkzeug\_internal.py - 97 - 2024-11-11 11:18:40,713 - INFO - 127.0.0.1 - - [11/Nov/2024 11:18:40] "[36mGET /static/components/Home.js HTTP/1.1[0m" 304 -
+C:\Users\adity\Documents\mad2\mad2\lib\site-packages\werkzeug\_internal.py - 97 - 2024-11-11 11:18:40,721 - INFO - 127.0.0.1 - - [11/Nov/2024 11:18:40] "[36mGET /static/components/Register.js HTTP/1.1[0m" 304 -
+C:\Users\adity\Documents\mad2\mad2\lib\site-packages\werkzeug\_internal.py - 97 - 2024-11-11 11:18:40,825 - INFO - 127.0.0.1 - - [11/Nov/2024 11:18:40] "GET /static/components/Login.js HTTP/1.1" 200 -
+C:\Users\adity\Documents\mad2\mad2\lib\site-packages\werkzeug\_internal.py - 97 - 2024-11-11 11:18:40,971 - INFO - 127.0.0.1 - - [11/Nov/2024 11:18:40] "[36mGET /static/images/home.gif HTTP/1.1[0m" 304 -
+C:\Users\adity\Documents\mad2\mad2\lib\site-packages\werkzeug\_internal.py - 97 - 2024-11-11 11:18:53,311 - INFO - 127.0.0.1 - - [11/Nov/2024 11:18:53] "OPTIONS /api/login HTTP/1.1" 200 -
+C:\Users\adity\Documents\mad2\mad2\lib\site-packages\werkzeug\_internal.py - 97 - 2024-11-11 11:18:53,716 - INFO - 127.0.0.1 - - [11/Nov/2024 11:18:53] "POST /api/login HTTP/1.1" 200 -
