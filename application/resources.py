@@ -1,283 +1,241 @@
-from flask_restful import Resource, Api, reqparse 
-from flask import jsonify , request , make_response
-from application.model import db, Services, User, Role
-from sqlalchemy.exc import IntegrityError
-from werkzeug.security import generate_password_hash , check_password_hash
-from flask_jwt_extended import get_jwt_identity,jwt_required , create_access_token
-from application.logger.logger import logger
-from functools import wraps
-from application.rbac import role_required
-import uuid
-from datetime import datetime , timedelta
+from flask_restful import Resource, Api, reqparse, marshal, fields
+from flask_security import auth_required, roles_required, current_user
+from .models import Service,Customer,User,Professional, ServiceRequest, db
+from werkzeug.security import generate_password_hash
+from application.sec import datastore
+from datetime import datetime
+from .instances import cache
 
 api = Api(prefix='/api')
 
+parser1 = reqparse.RequestParser()
+parser1.add_argument('name', type=str, help='Name is required and should be a string', required=True)
+parser1.add_argument('price', type=int, help='Price is required and should be an integer', required=True)
+parser1.add_argument('time_required', type=str, help='Time Required is required and should be a string', required=True)
+parser1.add_argument('description', type=str, help='Description is required and should be a string', required=True)
 
-####################################################################
-#### Method for JWT management for RBAC authentication #####
-####################################################################
+service_fields = {
+    "id": fields.Integer,
+    "name": fields.String,
+    "price": fields.Integer,
+    "time_required": fields.String,
+    "description": fields.String
+}
 
-class RBACTester(Resource):
-    @role_required('Customer')
+#######################################################
+#### Class to get all services and add new service ####
+#######################################################
+
+class Services(Resource):
+    @auth_required("token")
+    @cache.cached(timeout=50)
     def get(self):
-        return {'message': 'Access granted! This is a protected endpoint for customers only.'}, 200
+        all_services = Service.query.all()
+        if "professional" not in current_user.roles:
+            return marshal(all_services, service_fields)
+        # else:
+        #     return {"message": "This funtion us not allowed for current user"}, 404
     
-    @role_required('Service Provider')
+    @auth_required("token")
+    @roles_required("admin")
     def post(self):
-        return {'message': 'Access granted! This is a protected endpoint for service providers only.'}, 200
-    
-api.add_resource(RBACTester, '/rbac-tester')
-
-
-
-
-
-####################################################################
-####            Resource class to register the user            #####
-####################################################################
-
-class RegisterController(Resource):
-    def post(self):
-        try :
-            # Define required arguments
-            parser = reqparse.RequestParser()
-            parser.add_argument('username', type=str, required=True, help="Username cannot be blank!")
-            parser.add_argument('email', type=str, required=True, help="Email cannot be blank!")
-            parser.add_argument('password', type=str, required=True, help="Password cannot be blank!")
-            parser.add_argument('role_id', type=int, required=True, help="Role ID cannot be blank!")
-            args = parser.parse_args()
-
-            # Validate input data
-            if not args['username'] or not args['email'] or not args['password'] or not args['role_id']:
-                return make_response(jsonify({'message': 'All fields are required'}), 400)
-
-            # Check if the role exists in the database
-            role = Role.query.filter_by(id=args['role_id']).first()
-            if not role:
-                return make_response(jsonify({'message': 'Invalid role'}), 400)
-
-            # Check if the email already exists
-            if User.query.filter_by(email=args['email']).first():
-                return make_response(jsonify({'message': 'Email is already in use'}), 400)
-
-            # Generate fs_uniquefier using UUID
-            fs_uniquefier = str(uuid.uuid4())
-
-            # Hash the password before storing it
-            hashed_password = generate_password_hash(args['password'])
-
-            # Create the new user instance
-            new_user = User(
-                username=args['username'],
-                email=args['email'],
-                password=hashed_password,
-                role_id=args['role_id'],
-                fs_uniquefier=fs_uniquefier,
-                registration_date=datetime.today() # Set the registration date to the current time
-            )
-
-            # Add user to the database
-            db.session.add(new_user)
-            db.session.commit()
-
-            # Return the created user as a response (Serialized into dictionary)
-            user_data = {
-                    'id': new_user.id,
-                    'username': new_user.username,
-                    'role': new_user.role.name,
-                    'registration_date': new_user.registration_date.isoformat()  # Format the date properly
-                }
-            
-            logger.debug(f'User created: {user_data}')  # Log the serializable dict instead of the model instance
-
-            return make_response(jsonify({'message': 'User created successfully', 'user': user_data}), 201)
-
-        except Exception as e:
-            logger.error(f'Error creating user: {str(e)}')
-            db.session.rollback()
-            return make_response(jsonify({'message': 'An error occurred while creating the user'}), 500)
-    
-api.add_resource(RegisterController, '/register')
-
-
-
-
-
-####################################################################
-####     Resource class to login with JWT token management     #####
-####################################################################
-
-class LoginController(Resource):
-    def post(self):
-        try:
-            parser = reqparse.RequestParser()
-            parser.add_argument('email', type=str, required=False, help="Provide email or username")
-            parser.add_argument('username', type=str, required=False, help="Provide username or email")
-            parser.add_argument('password', type=str, required=True, help="Password cannot be blank!")
-            args = parser.parse_args()
-
-            # Ensure either email or username is provided
-            if not args['email'] and not args['username']:
-                return make_response(jsonify({'message': 'Either email or username must be provided'}), 400)
-
-            # Validate the input
-            if not args['password']:
-                return make_response(jsonify({'message': 'Password is required'}), 400)
-
-            # Look up the user by email or username
-            user = None
-            if args['email']:
-                user = User.query.filter_by(email=args['email']).first()
-            elif args['username']:
-                user = User.query.filter_by(username=args['username']).first()
-
-            if not user or not check_password_hash(user.password, args['password']):
-                return make_response(jsonify({'message': 'Invalid email or password'}), 401)
-
-            # Create access token with user role
-            if user.role != 'admin' :
-                access_token = create_access_token(identity=user.id,expires_delta=timedelta(hours=1) ,additional_claims={'username':user.username ,'role': user.role.name})
-            elif user.role == 'admin':
-                access_token = create_access_token(identity=user.id,expires_delta=timedelta(minutes=30) ,additional_claims={'username':user.username ,'role': user.role.name})
-            else :
-                return make_response(jsonify({'message': 'Invalid role to create a JWT token'}), 400)
-
-            # Update last login date
-            user.last_login = datetime.now()
-            db.session.commit()
-
-            return make_response(jsonify({'message': 'Login successful', 'token': access_token}), 200)
-        
-        except Exception as e:
-            logger.error(f'Error logging in: {str(e)}')
-            return make_response(jsonify({'message': 'An error occurred while logging in'}), 500)
-
-api.add_resource(LoginController, '/login')
-
-
-
-
-
-####################################################################
-#### Resource class to create , show , delete and edit Services ####
-####################################################################
-
-class ServicesController(Resource):
-    def get(self):
-        # Fetch all services from the database
-        services = Services.query.all()
-        # Serialize the data
-        services_data = [
-            {
-                'id': service.id,
-                'name': service.name,
-                'description': service.description,
-                'price': service.price,
-                'premium_only': service.premium_only,
-                'flagged': service.flagged,
-                'serviced_by_id': service.serviced_by_id
-            }
-            for service in services
-        ]
-        return jsonify(services_data)
-
-    def post(self):
-        # Define required arguments for POST request
-        parser = reqparse.RequestParser()
-        parser.add_argument('name', type=str, required=True, help="Name cannot be blank!")
-        parser.add_argument('description', type=str)
-        parser.add_argument('price', type=float, required=True, help="Price cannot be blank!")
-        parser.add_argument('premium_only', type=bool, default=False)
-        parser.add_argument('flagged', type=bool, default=False)
-        parser.add_argument('serviced_by_id', type=int, required=True, help="Serviced_by_id cannot be blank!")
-        args = parser.parse_args()
-
-        # Create new service record
-        new_service = Services(
-            name=args['name'],
-            description=args.get('description'),
-            price=args['price'],
-            premium_only=args['premium_only'],
-            flagged=args['flagged'],
-            serviced_by_id=args['serviced_by_id']
-        )
-
-        # Add and commit to the database
-        db.session.add(new_service)
+        args = parser1.parse_args()
+        service = Service(**args)
+        db.session.add(service)
         db.session.commit()
+        return {"message": "Service Created"}
+    
+#######################################################
+####      Class to update a service details        ####
+#######################################################
+    
+class UpdateService(Resource):
+    @auth_required('token')
+    @roles_required('admin')
+    def get(self,id):
+        service = Service.query.get(id)
+        return marshal(service, service_fields)
+    
+    def post(self,id):
+        service = Service.query.get(id)
+        args = parser1.parse_args()
+        service.name = args.name
+        service.price = args.price
+        service.time_required = args.time_required
+        service.description = args.description
+        db.session.commit()
+        return {"message": "Service Updated"}
 
-        return {'message': 'Service added successfully', 'service_id': new_service.id}, 201
+    
+parser2 = reqparse.RequestParser()
+parser2.add_argument('email', type=str, help='Email is required and should be a string', required=True)
+parser2.add_argument('password', type=str, help='Password is required and should be a string', required=True)
+parser2.add_argument('full_name', type=str, help='Full Name is required and should be a string', required=True)
+parser2.add_argument('address', type=str, help='Address is required and should be a string', required=True)
+parser2.add_argument('pincode', type=int, help='Pincode is required and should be an integer', required=True)
+customer_fields = {
+    "id": fields.Integer,
+    "full_name": fields.String,
+    "address": fields.String,
+    "pincode": fields.Integer,
+    "user_id": fields.Integer
+}
 
-    def delete(self):
-        parser = reqparse.RequestParser()
-        parser.add_argument('id', type=int, required=True, help="ID of the service to delete cannot be blank!")
-        args = parser.parse_args()
+#########################################################
+#### Class to get all customers and add new customer ####
+#########################################################
+class Customers(Resource):
+    @auth_required('token')
+    @roles_required('admin')
+    def get(self):
+        customers = Customer.query.all()
+        if len(customers) == 0:
+            return {"message": "No User Found"}, 404
+        return marshal(customers, customer_fields)
+    def post(self):
+        args = parser2.parse_args()
+        datastore.create_user(email=args.email, password=generate_password_hash(args.password), roles=['customer'])
+        customer = Customer(full_name=args.full_name, address=args.address, pincode=args.pincode, user_id = User.query.filter_by(email=args.email).all()[0].id)
+        db.session.add(customer)
+        db.session.commit()
+        return {"message": "Customer Added"}
+    
+parser3 = reqparse.RequestParser()
+parser3.add_argument('email', type=str, help='Email is required and should be a string', required=True)
+parser3.add_argument('password', type=str, help='Password is required and should be a string', required=True)
+parser3.add_argument('full_name', type=str, help='Full Name is required and should be a string', required=True)
+parser3.add_argument('service', type=str, help='Service is required and should be a string', required=True)
+parser3.add_argument('experience', type=str, help='Experience is required and should be a string', required=True)
+parser3.add_argument('address', type=str, help='Address is required and should be a string', required=True)
+parser3.add_argument('pincode', type=int, help='Pincode is required and should be an integer', required=True)
 
-        # Query the service by ID
-        service = Services.query.get(args['id'])
-        if not service:
-            return {'message': 'Data not found in db'}, 404
-        
-        try:
-            db.session.delete(service)
-            db.session.commit()
-            return {'message': f'Service with id {args["id"]} deleted successfully'}, 200
-        except IntegrityError:
-            db.session.rollback()
-            return {'message': 'An error occurred while trying to delete the service'}, 500
-        
-    def put(self):
-        parser = reqparse.RequestParser()
-        parser.add_argument('id', type=int, required=True, help="ID of the service to edit cannot be blank!")
-        parser.add_argument('name', type=str, required=False)
-        parser.add_argument('description', type=str, required=False)
-        parser.add_argument('price', type=float, required=False)
-        parser.add_argument('premium_only', type=bool, required=False)
-        parser.add_argument('flagged', type=bool, required=False)
-        parser.add_argument('serviced_by_id', type=int, required=False)
-        args = parser.parse_args()
+professional_fields = {
+    "id": fields.Integer,
+    "full_name": fields.String,
+    "experience": fields.String,
+    "service": fields.String,
+    "active": fields.Boolean
+}
 
-        # Check if at least one field other than 'id' is provided for updating
-        if all(value is None for key, value in args.items() if key != 'id'):
-            return {'message': 'No fields provided to update'}, 400
+#################################################################
+#### Class to get all professionals and add new professional ####
+#################################################################
+class Professionals(Resource):
+    @auth_required('token')
+    @roles_required('admin')
+    def get(self):
+        professionals = Professional.query.all()
+        if len(professionals) == 0:
+            return {"message": "No User Found"}, 404
+        return marshal(professionals, professional_fields)
+    
+    def post(self):
+        args = parser3.parse_args()
+        datastore.create_user(email=args.email, password=generate_password_hash(args.password), roles=['professional'], active=False)
+        professional = Professional(full_name=args.full_name, service=args.service, experience=args.experience, address=args.address, pincode=args.pincode, user_id = User.query.filter_by(email=args.email).all()[0].id, active=False)
+        db.session.add(professional)
+        db.session.commit()
+        return {"message": "Professional Added"}
 
-        # Attempt to query the service by ID
-        try:
-            service = Services.query.get(args['id'])
-            if not service:
-                return {'message': 'Data not found in db'}, 404
-        except ValueError:
-            return {'message': 'Invalid service ID'}, 400
+parser4 = reqparse.RequestParser()
+parser4.add_argument('service_id', type=int, help='Service ID should be an integer')
+parser4.add_argument('customer_id', type=int, help='Customer ID should be an integer')
+parser4.add_argument('professional_id', type=int, help='Professional ID should be an integer')
+parser4.add_argument('date_of_completion', type=str, help='Date of Completion should be a string')
+parser4.add_argument('service_status', type=str, help='Service Status is should be a string')
+service_request_fields = {
+    "id": fields.Integer,
+    "service_id": fields.Integer,
+    "customer_id": fields.Integer,
+    "professional_id": fields.Integer,
+    "date_of_request": fields.String,
+    "date_of_completion": fields.String,
+    "rating": fields.Integer,
+    "remarks": fields.String,
+    "service_status": fields.String
+}
 
-        # Update fields if new values are provided
-        try:
-            if args['name'] is not None:
-                service.name = args['name']
-            if args['description'] is not None:
-                service.description = args['description']
-            if args['price'] is not None:
-                if args['price'] < 0:
-                    return {'message': 'Price must be a positive number'}, 400
-                service.price = args['price']
-            if args['premium_only'] is not None:
-                service.premium_only = args['premium_only']
-            if args['flagged'] is not None:
-                service.flagged = args['flagged']
-            if args['serviced_by_id'] is not None:
-                if args['serviced_by_id'] <= 0:
-                    return {'message': 'Serviced_by_id must be a positive integer'}, 400
-                service.serviced_by_id = args['serviced_by_id']
+###############################################################
+#### Class to get all service requests and add new request ####
+###############################################################
+class ServiceRequests(Resource):
+    def get(self):
+        service_requests = ServiceRequest.query.all()
+        if len(service_requests) == 0:
+            return {"message": "No User Found"}, 404
+        all_services = Service.query.all()
+        return {
+            'service_requests': marshal(service_requests,service_request_fields),
+            'services': marshal(all_services, service_fields)
+        }
+    
+    def post(self):
+        args = parser4.parse_args()
+        service_request = ServiceRequest(service_id=args.service_id, customer_id=Customer.query.filter_by(user_id=args.customer_id).all()[0].id, date_of_request=datetime.now().strftime("%d/%m/%y"), service_status='requested')
+        db.session.add(service_request)
+        db.session.commit()
+        return {"message": "Service Request Added"}
+    
 
-            # Commit changes to the database
-            db.session.commit()
-            return {'message': f'Service with id {args["id"]} updated successfully'}, 200
+##############################################################
+## Class to Accept Service Requests and reject the requests ##
+##############################################################    
+class AcceptServiceRequest(Resource):
+    def get(self,id):
+        service_request = ServiceRequest.query.get(id)
+        service_request.professional_id = None
+        service_request.service_status = 'requested'
+        db.session.commit()
+        return {"message": "Service Request Rejected"}
+    
+    def post(self,id):
+        service_request = ServiceRequest.query.get(id)
+        args = parser4.parse_args()
+        service_request.professional_id = args.professional_id
+        service_request.service_status = 'assigned'
+        db.session.commit()
+        return {"message": "Service Request Accepted"}
+    
+parser5 = reqparse.RequestParser()
+parser5.add_argument('user_id', type=int, help='User_id is required and should be an integer', required=True)
 
-        except IntegrityError:
-            db.session.rollback()
-            return {'message': 'An error occurred while trying to update the service, possibly due to a database constraint'}, 500
-        except Exception as e:
-            return {'message': f'An unexpected error occurred: {str(e)}'}, 500
+##############################################################
+##      Class to get Service Requests by Customer ID        ##
+##############################################################
+class ServiceRequestByCustomer(Resource):
+    def post(self):
+        args = parser5.parse_args()
+        customer = Customer.query.filter_by(user_id=args.user_id).all()[0]
+        service_requests = ServiceRequest.query.filter_by(customer_id=customer.id).all()
+        all_services = Service.query.all()
+        return {
+            'service_requests': marshal(service_requests,service_request_fields),
+            'services': marshal(all_services, service_fields)
+        }
 
-api.add_resource(ServicesController, '/services')
+parser6 = reqparse.RequestParser()
+parser6.add_argument('rating', type=int, help='Rating is required and should be an integer', required=True)
+parser6.add_argument('remarks', type=str, help='Remarks should be a string')
 
+##############################################################
+##              Class to close Service Requests             ##
+##############################################################
+class CloseServiceRequest(Resource):
+    def post(self,id):
+        args = parser6.parse_args()
+        service_request = ServiceRequest.query.get(id)
+        service_request.rating = args.rating
+        service_request.remarks = args.remarks
+        service_request.date_of_completion = datetime.now().strftime("%d/%m/%y")
+        service_request.service_status = 'closed'
+        db.session.commit()
+        return {"message": "Service Request Closed"}
 
+api.add_resource(Services, '/services')
+api.add_resource(Customers, '/customers')
+api.add_resource(Professionals, '/professionals')
+api.add_resource(UpdateService, '/update/service/<int:id>')
+api.add_resource(ServiceRequests, '/request/service')
+api.add_resource(AcceptServiceRequest, '/accept/service-request/<int:id>')
+api.add_resource(ServiceRequestByCustomer, '/service-request/customer')
+api.add_resource(CloseServiceRequest, '/close/service-request/<int:id>')

@@ -1,32 +1,69 @@
+import AdminHome from "./AdminHome.js"
+import ProfessionalHome from "./ProfessionalHome.js"
+import CustomerHome from "./CustomerHome.js"
+import Services from "./Services.js"
+
 export default {
     template: `
-        <div>
-            <!-- Hero Section -->
-            <section class="hero-section d-flex align-items-center justify-content-center">
-                <div class="text-center ">
-                    <h1 class="display-4 fw-bold animate__animated animate__backInDown">Find Trusted Services Near You</h1>
-                    <p class="lead mt-3 animate__animated animate__backInDown">Get quick access to professional services in your area.</p>
-                    <router-link to="/services" class="btn btn-primary btn-lg mt-4 animate__animated animate__bounceInUp">Explore Services</router-link>
-                </div>
-            </section>
-
-            <!-- Info Section -->
-            <section class="container my-5 animate__animated animate__fadeInUp">
-                <div class="row">
-                    <div class="col-md-4">
-                        <h3>Service Providers</h3>
-                        <p>Skilled professionals ready to assist you.</p>
-                    </div>
-                    <div class="col-md-4">
-                        <h3>Customer Reviews</h3>
-                        <p>Read reviews from other users.</p>
-                    </div>
-                    <div class="col-md-4">
-                        <h3>24/7 Support</h3>
-                        <p>We're here to help whenever you need it.</p>
-                    </div>
-                </div>
-            </section>
+    <div class="home-container">
+        <div v-if="!is_login" class="login-container d-flex flex-column align-items-center justify-content-center vh-100 text-white">
+            <h1 class="mb-4 animate__animated animate__bounceInDown">Welcome to ServiceHub</h1>
+            <div class="d-flex flex-column gap-3 animate__animated animate__bounceInUp">
+                <router-link to="/customer-signup" class="btn btn-outline-light btn-lg px-4">Register: Customer</router-link>
+                <router-link to="/login" class="btn btn-primary btn-lg px-4">Login</router-link>
+                <router-link to="/service-professional-signup" class="btn btn-outline-light btn-lg px-4">Register: Professional</router-link>
+            </div>
         </div>
-    `
-}
+         <div v-else>
+            <div v-if="active=='false'">
+                <h1 class="text-center text-danger">User Not Approved</h1>
+            </div>
+            <div v-else>
+                <AdminHome v-if="userRole=='admin'"/>
+                <ProfessionalHome v-if="userRole=='professional'"/>
+                <CustomerHome v-if="userRole=='customer'"/>
+                <div v-if="userRole=='admin'">
+                    <Services v-for="service in services" :service="service" v-bind:key="service.id"/>
+                </div>
+                <div v-if="userRole=='customer'" class="d-flex flex-row">
+                    <Services v-for="service in services" :service="service" v-bind:key="service.id"/>
+                </div>
+            </div>
+        </div>
+    </div>
+    `,
+    data() {
+        return {
+            userRole: localStorage.getItem('role'),
+            active: localStorage.getItem('active'),
+            is_login: localStorage.getItem('auth-token'),
+            services: []
+        };
+    },
+    components: {
+        AdminHome,
+        ProfessionalHome,
+        CustomerHome,
+        Services
+    },
+    async mounted() {
+        if (this.is_login) {
+            try {
+                const res = await fetch('/api/services', {
+                    headers: {
+                        'Authentication-Token': this.is_login
+                    }
+                });
+                const data = await res.json();
+                if (res.ok) {
+                    console.log('Fetched services:', data);
+                    this.services = data;
+                } else {
+                    console.error('Error fetching services:', data.message);
+                }
+            } catch (error) {
+                console.error('Error fetching services:', error);
+            }
+        }
+    },
+};

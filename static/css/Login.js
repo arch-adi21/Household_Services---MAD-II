@@ -1,11 +1,10 @@
-export default{
+export default {
     template: `
-    <div class="login-page animate__animated animate__fadeIn">
+    <div class="login-page">
         <div class="login-container d-flex justify-content-center align-items-center">
             <div class="login-form-container p-4 rounded shadow">
-                <div class="d-flex flex-column align-items-center mb-3">
-                    <router-link class="btn btn-outline-success mb-2" to="/service-professional-signup">Register as Professional</router-link>
-                    <router-link class="btn btn-outline-warning" to="/customer-signup">Register as Customer</router-link>
+                <div>    
+                    <router-link class="btn btn-outline-success" to="/service-professional-signup">Register as Professional</router-link> 
                 </div>    
                 <h2 class="text-center mb-4 text-white">Login</h2>
                 <form>
@@ -28,15 +27,15 @@ export default{
     data() {
         return {
             cred: {
-                email: null,
-                password: null
+                email: '',
+                password: ''
             },
-            error: null
+            error: ''
         }
     },
     methods: {
         async login() {
-            const res = await fetch('/user-login', {
+            const res = await fetch('/api/login', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
@@ -44,20 +43,25 @@ export default{
                 body: JSON.stringify(this.cred)
             })
             const data = await res.json()
-            if(res.ok){
+            if (res.ok) {
                 localStorage.setItem('auth-token', data.token)
                 localStorage.setItem('role', data.role)
                 localStorage.setItem('active', data.active)
-                localStorage.setItem('user_id', data.id)
-                localStorage.setItem('id', data.email.charAt(data.email.length - 11))
-                this.$router.push({path: '/'})
-            }
-            else {
+                this.$router.push('/')
+            } else {
                 this.error = data.message
             }
         }
     },
     style: `
+    .login-page {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 100vh;
+        background: linear-gradient(rgba(0,0,0,0.7), rgba(0,0,0,0.7)), url('/static/images/login-background.gif') no-repeat center center fixed;
+        background-size: cover;
+    }
     .login-container {
         padding: 50px;
         background-color: rgba(248, 249, 250, 0.8); /* Light background with transparency */
